@@ -37,20 +37,20 @@ const useCountUp = (end: number, duration: number = 2000) => {
 export const FeatureModal: React.FC<Props> = ({ type, winAmount, onClose }) => {
   const [visible, setVisible] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const displayAmount = useCountUp(winAmount || 0, 2500); // 2.5s count up
+  const displayAmount = useCountUp(winAmount || 0, 4000); // Slower count up for big win
   const [showButton, setShowButton] = useState(false);
 
   useEffect(() => {
     // Animation trigger
     setTimeout(() => setVisible(true), 100);
     if (type === 'FEATURE_SUMMARY') {
-        setTimeout(() => setShowButton(true), 2500); // Show button after count up
+        setTimeout(() => setShowButton(true), 3000); // Show button later
     } else {
         setShowButton(true);
     }
   }, [type]);
 
-  // Particle System for Big Win
+  // Continuous Coin Fountain System
   useEffect(() => {
       if (type !== 'FEATURE_SUMMARY' || !canvasRef.current) return;
 
@@ -58,60 +58,85 @@ export const FeatureModal: React.FC<Props> = ({ type, winAmount, onClose }) => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const resize = () => {
+          canvas.width = window.innerWidth;
+          canvas.height = window.innerHeight;
+      };
+      window.addEventListener('resize', resize);
+      resize();
 
       const particles: any[] = [];
-      const colors = ['#FFD700', '#FFA500', '#ffffff', '#00ffff', '#ff00ff'];
+      const colors = ['#FFD700', '#FFA500', '#DAA520', '#F0E68C', '#B8860B']; // Rich Gold Palette
 
-      // Create Particles
-      for (let i = 0; i < 200; i++) {
-          particles.push({
+      const createParticle = () => {
+          return {
               x: canvas.width / 2,
-              y: canvas.height / 2,
-              vx: (Math.random() - 0.5) * 20,
-              vy: (Math.random() - 0.5) * 20 - 5, // Upward bias
-              size: Math.random() * 8 + 2,
+              y: canvas.height / 2 + 150, // Emit from slightly below center
+              vx: (Math.random() - 0.5) * 12, // Spread width
+              vy: -(Math.random() * 15 + 12), // High Upward velocity (Jet effect)
+              size: Math.random() * 10 + 6,   // Big coins
               color: colors[Math.floor(Math.random() * colors.length)],
-              gravity: 0.5,
-              drag: 0.98,
+              gravity: 0.6,
+              drag: 0.99, // Air resistance
               rotation: Math.random() * Math.PI * 2,
-              rotationSpeed: (Math.random() - 0.5) * 0.2
-          });
-      }
+              rotationSpeed: (Math.random() - 0.5) * 0.3,
+              type: Math.random() > 0.9 ? 'confetti' : 'coin' // 90% Coins, 10% Confetti
+          };
+      };
 
       let animationId: number;
       const animate = () => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           
-          particles.forEach((p, index) => {
+          // Emitter: Continuously spawn new particles
+          // Spawn 3-5 coins per frame for dense effect
+          for(let i=0; i<4; i++) {
+              particles.push(createParticle());
+          }
+          
+          for (let i = particles.length - 1; i >= 0; i--) {
+              const p = particles[i];
               p.x += p.vx;
               p.y += p.vy;
               p.vy += p.gravity;
               p.vx *= p.drag;
-              p.vy *= p.drag;
               p.rotation += p.rotationSpeed;
-
-              // Bounce off floor
-              if (p.y + p.size > canvas.height) {
-                  p.y = canvas.height - p.size;
-                  p.vy *= -0.6;
-              }
 
               ctx.save();
               ctx.translate(p.x, p.y);
               ctx.rotate(p.rotation);
               ctx.fillStyle = p.color;
-              // Draw Gold Coin Shape (Circle) or Confetti (Rect)
-              if (index % 2 === 0) {
+              
+              if (p.type === 'coin') {
+                  // Coin Body
                   ctx.beginPath();
                   ctx.arc(0, 0, p.size, 0, Math.PI * 2);
                   ctx.fill();
+                  
+                  // Coin Inner Ring (Detail)
+                  ctx.strokeStyle = '#B8860B';
+                  ctx.lineWidth = 1;
+                  ctx.beginPath();
+                  ctx.arc(0, 0, p.size * 0.7, 0, Math.PI * 2);
+                  ctx.stroke();
+
+                  // Shine/Glint
+                  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                  ctx.beginPath();
+                  ctx.arc(-p.size*0.3, -p.size*0.3, p.size*0.25, 0, Math.PI * 2);
+                  ctx.fill();
               } else {
-                  ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size);
+                  // Neon Confetti
+                  ctx.fillStyle = ['#00ffff', '#ff00ff', '#ccff00'][Math.floor(Math.abs(p.x) % 3)];
+                  ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size * 1.5);
               }
               ctx.restore();
-          });
+
+              // Cleanup particles that fell off screen
+              if (p.y > canvas.height + 50) {
+                  particles.splice(i, 1);
+              }
+          }
 
           animationId = requestAnimationFrame(animate);
       };
@@ -120,6 +145,7 @@ export const FeatureModal: React.FC<Props> = ({ type, winAmount, onClose }) => {
 
       return () => {
           cancelAnimationFrame(animationId);
+          window.removeEventListener('resize', resize);
       };
   }, [type]);
 
