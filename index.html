@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jackie SUPER MONEY</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Rye&family=Playfair+Display:wght@700;900&family=Share+Tech+Mono&display=swap');
+
+      :root {
+        --glass-shine: rgba(255, 255, 255, 0.1);
+        --neon-cyan: #00ffff;
+        --neon-pink: #ff00ff;
+        --neon-lime: #ccff00;
+      }
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        /* Pitch Black for high contrast Techno look */
+        background: #000000;
+        color: white;
+        font-family: 'Playfair Display', serif;
+      }
+
+      .font-western {
+        font-family: 'Rye', serif;
+      }
+      
+      .font-serif-display {
+        font-family: 'Playfair Display', serif;
+      }
+
+      .font-mono {
+        font-family: 'Share Tech Mono', monospace;
+      }
+
+      /* Realistic Materials */
+      .metal-frame {
+        position: absolute;
+        inset: 0;
+        border: 12px solid #b8860b; 
+        border-radius: 12px;
+        box-shadow: 
+          inset 0 0 20px rgba(0,0,0,0.9), 
+          0 0 0 2px #5c4008, 
+          0 10px 20px rgba(0,0,0,0.5); 
+        background: transparent; 
+        pointer-events: none;
+        z-index: 50;
+      }
+      
+      .glass-screen {
+        background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 40%, rgba(255,255,255,0.02) 100%);
+        box-shadow: inset 0 0 20px rgba(0,0,0,0.3); 
+        pointer-events: none;
+      }
+      
+      .glass-glare {
+        background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.02) 50%, transparent 100%);
+        transform: skewX(-20deg);
+        pointer-events: none;
+      }
+
+      .btn-physical {
+        transition: all 0.1s;
+        box-shadow: 0 4px 0 #000, 0 5px 10px rgba(0,0,0,0.5);
+      }
+      .btn-physical:active:not(:disabled) {
+        transform: translateY(4px);
+        box-shadow: 0 0 0 #000, inset 0 2px 5px rgba(0,0,0,0.5);
+      }
+      .btn-physical:disabled {
+        opacity: 0.6;
+        filter: grayscale(100%);
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+        border-color: #333;
+        background: #222;
+      }
+
+      /* Animations */
+      @keyframes spin-scroll {
+        0% { transform: translateY(0%); }
+        100% { transform: translateY(50%); } 
+      }
+      .animate-spin-scroll {
+        animation: spin-scroll 0.2s linear infinite;
+        will-change: transform;
+      }
+
+      @keyframes gold-pulse {
+        0%, 100% { box-shadow: 0 0 10px #FFD700; transform: scale(1); }
+        50% { box-shadow: 0 0 30px #FFD700; transform: scale(1.05); }
+      }
+      .animate-gold-pulse {
+        animation: gold-pulse 1.5s infinite;
+      }
+
+      @keyframes fade-in-up {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in-up {
+        animation: fade-in-up 0.8s ease-out forwards;
+      }
+      
+      @keyframes shine {
+          0% { left: -100%; top: -100%; }
+          100% { left: 200%; top: 200%; }
+      }
+
+      /* Bulb Animation */
+      .bulb {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #331100;
+        box-shadow: inset 0 0 2px black;
+        transition: background 0.1s, box-shadow 0.1s;
+      }
+      .bulb.on {
+        background: #ffaa00;
+        box-shadow: 0 0 10px #ffaa00, 0 0 20px #ffaa00;
+      }
+
+      /* TECHNO / STROBE EFFECTS */
+      
+      /* Global Strobe Overlay */
+      .strobe-overlay {
+        position: fixed;
+        inset: 0;
+        background: white;
+        opacity: 0;
+        pointer-events: none;
+        z-index: 5; /* Behind UI, in front of background */
+        mix-blend-mode: overlay;
+        animation: strobe-flash 0.15s infinite;
+      }
+      @keyframes strobe-flash {
+        0%, 90% { opacity: 0; }
+        95% { opacity: 0.15; }
+        100% { opacity: 0; }
+      }
+
+      /* Moving 3D Grid Floor */
+      .techno-grid {
+        position: fixed;
+        bottom: 0;
+        left: -50%;
+        width: 200%;
+        height: 50vh;
+        background-image:
+          linear-gradient(var(--neon-cyan) 1px, transparent 1px),
+          linear-gradient(90deg, var(--neon-cyan) 1px, transparent 1px);
+        background-size: 50px 50px;
+        background-position: center bottom;
+        transform: perspective(300px) rotateX(60deg);
+        opacity: 0.3;
+        animation: grid-move 2s linear infinite;
+        z-index: 1;
+        pointer-events: none;
+        mask-image: linear-gradient(to top, black 40%, transparent 100%);
+      }
+      @keyframes grid-move {
+        0% { background-position: 0 0; }
+        100% { background-position: 0 50px; }
+      }
+
+      /* Laser Beams */
+      .laser-beam {
+        position: absolute;
+        top: 0; /* Originates from top */
+        left: 50%;
+        width: 6px;
+        height: 150vmax;
+        background: white;
+        transform-origin: top center;
+        opacity: 0.8;
+        filter: blur(4px);
+        pointer-events: none;
+        z-index: 2;
+        mix-blend-mode: screen;
+      }
+      .laser-green {
+        background: var(--neon-lime);
+        box-shadow: 0 0 10px var(--neon-lime), 0 0 20px var(--neon-lime);
+        animation: laser-sweep-1 3s infinite alternate ease-in-out;
+      }
+      .laser-pink {
+        background: var(--neon-pink);
+        box-shadow: 0 0 10px var(--neon-pink), 0 0 20px var(--neon-pink);
+        animation: laser-sweep-2 0.8s infinite alternate ease-in-out;
+      }
+      .laser-blue {
+        background: var(--neon-cyan);
+        box-shadow: 0 0 10px var(--neon-cyan), 0 0 20px var(--neon-cyan);
+        animation: laser-sweep-3 5s infinite alternate linear;
+      }
+
+      @keyframes laser-sweep-1 { 
+        0% { transform: rotate(-60deg) scaleY(1); opacity: 0.5; } 
+        100% { transform: rotate(60deg) scaleY(1.2); opacity: 1; } 
+      }
+      @keyframes laser-sweep-2 { 
+        0% { transform: translateX(-20vw) rotate(-20deg); opacity: 0; } 
+        50% { opacity: 1; }
+        100% { transform: translateX(20vw) rotate(20deg); opacity: 0; } 
+      }
+      @keyframes laser-sweep-3 { 
+        0% { transform: rotate(0deg); } 
+        100% { transform: rotate(360deg); } 
+      }
+
+      /* Neon Particles */
+      .neon-particle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        pointer-events: none;
+        animation: neon-fall linear infinite;
+        z-index: 3;
+      }
+      @keyframes neon-fall {
+        0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+        20% { opacity: 1; }
+        100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+      }
+      
+      .text-shadow-glow {
+        text-shadow: 0 0 5px currentColor;
+      }
+
+      /* Big Win Celebration Effects */
+      @keyframes rotate-rays {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      .sunburst-ray {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 200%;
+        height: 200%;
+        background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 215, 0, 0.1) 20deg, transparent 40deg);
+        transform-origin: center;
+        animation: rotate-rays 10s linear infinite;
+        pointer-events: none;
+      }
+
+      @keyframes text-pop {
+        0% { transform: scale(0.5); opacity: 0; }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); opacity: 1; }
+      }
+      .animate-text-pop {
+        animation: text-pop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
