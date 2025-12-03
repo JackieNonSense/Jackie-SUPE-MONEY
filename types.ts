@@ -31,6 +31,9 @@ export interface CustomAssets {
   featureBgm?: string; // Blob URL
   spinSound?: string; // Blob URL
   featureTriggerSound?: string; // Blob URL for Feature Trigger (Celebration)
+  nearJackpotSound?: string; // New: For Hold & Spin (<= 3 spots left)
+  featureEndSound?: string; // New: Feature Finished
+  winningSound?: string; // New: Summary Win Count
   orbImage?: string; // Blob URL
   bonusImage?: string; // Blob URL
   wildImage?: string; // Blob URL
@@ -66,11 +69,11 @@ export interface GameState {
   betMultiplier: number; // 1-5
   selectedLines: number; // 1-25 or 1-5
   isSpinning: boolean;
-  
+
   // The visual grid symbols
-  grid: SymbolType[][]; 
+  grid: SymbolType[][];
   // Overlay values for Orbs (Cash amount or Jackpot Name)
-  gridValues: (number | string | null)[][]; 
+  gridValues: (number | string | null)[][];
 
   lastWinAmount: number;
   winningLines: WinLine[];
@@ -84,7 +87,7 @@ export interface GameState {
 
   // Feature State
   featureWinAmount: number; // Accumulator for feature wins
-  
+
   freeGames: {
     remaining: number;
     totalPlayed: number;
@@ -95,17 +98,18 @@ export interface GameState {
     lockedPositions: boolean[][]; // [col][row] true if locked
     isGrandWon: boolean;
   };
-  
+
   // Modal for feature trigger
   featureModalType: 'NONE' | 'FREE_GAMES' | 'HOLD_AND_SPIN' | 'FEATURE_SUMMARY';
-  
+
   // Settings
   isSettingsOpen: boolean;
   customAssets: CustomAssets;
   isMuted: boolean;
-  
+
   // Visual Transition State
   isTransitioning: boolean;
+  isFeatureTriggering?: boolean; // New: Waiting for trigger sound
 }
 
 export const DENOMINATIONS = [

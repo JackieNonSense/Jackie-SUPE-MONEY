@@ -23,17 +23,17 @@ export const SymbolItem: React.FC<SymbolProps> = ({ type, isWin, value, isLocked
   // Format Orb Value
   let displayValue = '';
   let isJackpot = false;
-  
+
   if (isOrb && value) {
       if (typeof value === 'string') {
           displayValue = value; // MINI, MINOR, MAJOR
           isJackpot = true;
       } else {
           // It's a number (cents)
-          displayValue = new Intl.NumberFormat('en-US', { 
-             style: 'currency', 
+          displayValue = new Intl.NumberFormat('en-US', {
+             style: 'currency',
              currency: 'USD',
-             maximumFractionDigits: 0 
+             maximumFractionDigits: 0
           }).format(value / 100);
       }
   }
@@ -46,7 +46,7 @@ export const SymbolItem: React.FC<SymbolProps> = ({ type, isWin, value, isLocked
       ${isWin || isLocked ? 'z-10' : ''}
       ${isLocked ? 'scale-95 transition-transform duration-300' : ''}
   `;
-  
+
   const bgClass = `
       absolute inset-0 bg-gradient-to-br from-[#222] to-[#000] rounded-md border border-[#333]
       shadow-inner
@@ -75,12 +75,12 @@ export const SymbolItem: React.FC<SymbolProps> = ({ type, isWin, value, isLocked
                         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,0,0.4),transparent)]"></div>
                     </div>
                 )}
-                
+
                 {/* Value Overlay */}
-                <div className="relative z-10 flex flex-col items-center justify-center w-full text-center">
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center text-center pointer-events-none">
                     <span className={`
                         font-black drop-shadow-[0_2px_4px_black] text-white
-                        ${isJackpot ? 'text-xs md:text-sm tracking-wider uppercase text-yellow-100' : 'text-sm md:text-lg'}
+                        ${isJackpot ? 'text-xs md:text-sm tracking-wider uppercase text-yellow-100' : 'text-base md:text-xl'}
                     `}>
                         {displayValue}
                     </span>
@@ -91,8 +91,8 @@ export const SymbolItem: React.FC<SymbolProps> = ({ type, isWin, value, isLocked
             <>
                 {finalImage ? (
                     // Render Custom Image
-                    <img 
-                        src={finalImage} 
+                    <img
+                        src={finalImage}
                         alt={config.label}
                         className={`
                             relative z-10 w-[85%] h-[85%] object-contain drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]
@@ -114,7 +114,7 @@ export const SymbolItem: React.FC<SymbolProps> = ({ type, isWin, value, isLocked
                 )}
             </>
         )}
-          
+
         {/* Winning Border Overlay */}
         {isWin && (
             <div className="absolute inset-0 border-4 border-yellow-300 rounded-md animate-pulse opacity-70" />

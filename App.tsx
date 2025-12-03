@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GameState, SymbolType, WinLine, DENOMINATIONS, GameScreen, GameMode, CustomAssets } from './types';
-import { SYMBOLS, PAYTABLE, REEL_STRIPS, FREE_GAME_STRIPS, LINES_5, LINES_25 } from './constants';
+import { SYMBOLS, PAYTABLE, REEL_STRIPS, FREE_GAME_STRIPS, LINES_5, LINES_25, DEFAULT_ASSETS } from './constants';
 import { JackpotDisplay } from './components/JackpotDisplay';
 import { SlotMachine } from './components/SlotMachine';
 import { ControlPanel } from './components/ControlPanel';
@@ -46,13 +46,25 @@ function App() {
       isGrandWon: false
     },
     featureModalType: 'NONE',
-    
+
     // New State for Settings
     isSettingsOpen: false,
-    customAssets: {},
+    customAssets: DEFAULT_ASSETS,
     isMuted: false,
     isTransitioning: false,
+    isFeatureTriggering: false,
   });
+
+  // Initialize Audio with Default Assets
+  useEffect(() => {
+    if (DEFAULT_ASSETS.mainBgm) audio.setCustomMainBgm(DEFAULT_ASSETS.mainBgm);
+    if (DEFAULT_ASSETS.featureBgm) audio.setCustomFeatureBgm(DEFAULT_ASSETS.featureBgm);
+    if (DEFAULT_ASSETS.spinSound) audio.setCustomSpinSound(DEFAULT_ASSETS.spinSound);
+    if (DEFAULT_ASSETS.featureTriggerSound) audio.setCustomFeatureTrigger(DEFAULT_ASSETS.featureTriggerSound);
+    if (DEFAULT_ASSETS.nearJackpotSound) audio.setCustomNearJackpot(DEFAULT_ASSETS.nearJackpotSound);
+    if (DEFAULT_ASSETS.featureEndSound) audio.setCustomFeatureEnd(DEFAULT_ASSETS.featureEndSound);
+    if (DEFAULT_ASSETS.winningSound) audio.setCustomWinningSound(DEFAULT_ASSETS.winningSound);
+  }, []);
 
   // Ref to track spinning state instantly without waiting for re-renders
   const isSpinningRef = useRef(false);
@@ -66,24 +78,77 @@ function App() {
     isSpinningRef.current = gameState.isSpinning;
   }, [gameState.isSpinning]);
 
+  // FEATURE TRIGGER AUDIO LOGIC
+  useEffect(() => {
+      if (gameState.isFeatureTriggering) {
+          audio.playFeatureTrigger().then(() => {
+              setGameState(prev => {
+                  // Determine which modal to show based on the mode we switched to
+                  let modalType: any = 'NONE';
+                  if (prev.mode === GameMode.FREE_GAMES) modalType = 'FREE_GAMES';
+                  if (prev.mode === GameMode.HOLD_AND_SPIN) modalType = 'HOLD_AND_SPIN';
+
+                  // Start Feature BGM
+                  audio.playFeatureBg();
+
+                  return {
+                      ...prev,
+                      isFeatureTriggering: false,
+                      featureModalType: modalType,
+                      isSpinning: false, // Unlock
+                  };
+              });
+          });
+      }
+  }, [gameState.isFeatureTriggering]);
+
+  // NEAR JACKPOT LOGIC
+  useEffect(() => {
+      if (gameState.mode === GameMode.HOLD_AND_SPIN) {
+          let orbCount = 0;
+          gameState.grid.forEach(col => col.forEach(s => {
+              if (s === SymbolType.ORB) orbCount++;
+          }));
+
+          // If 12 or more orbs (<= 3 empty), play Near Jackpot
+          if (orbCount >= 12 && orbCount < 15) {
+              audio.playNearJackpot();
+          } else {
+              audio.stopNearJackpot();
+          }
+      } else {
+          audio.stopNearJackpot();
+      }
+  }, [gameState.grid, gameState.mode]);
+
+  // WINNING SOUND LOGIC (Summary)
+  useEffect(() => {
+      if (gameState.featureModalType === 'FEATURE_SUMMARY') {
+          audio.playWinningSound();
+      } else {
+          audio.stopWinningSound();
+      }
+  }, [gameState.featureModalType]);
+
   // AUTO SPIN LOGIC FOR FEATURES
   useEffect(() => {
     if (
         (gameState.mode === GameMode.FREE_GAMES) &&
         !gameState.isSpinning &&
-        gameState.featureModalType === 'NONE'
+        gameState.featureModalType === 'NONE' &&
+        !gameState.isFeatureTriggering
     ) {
         const timer = setTimeout(() => {
             handleSpin();
-        }, 1000); 
+        }, 1000);
         return () => clearTimeout(timer);
     }
-  }, [gameState.mode, gameState.isSpinning, gameState.featureModalType]);
+  }, [gameState.mode, gameState.isSpinning, gameState.featureModalType, gameState.isFeatureTriggering]);
 
   const handleDenomSelect = (denomValue: number) => {
     const denomConfig = DENOMINATIONS.find(d => d.value === denomValue);
     const maxLines = denomConfig ? denomConfig.maxLines : 25;
-    
+
     // Start Main BGM on game entry
     audio.playMainBgm();
 
@@ -96,7 +161,7 @@ function App() {
       mode: GameMode.BASE
     }));
   };
-  
+
   const handleToggleMute = () => {
       const muted = audio.toggleMute();
       setGameState(p => ({ ...p, isMuted: muted }));
@@ -118,11 +183,11 @@ function App() {
     if (rand < 0.02) return 'MAJOR';
     if (rand < 0.08) return 'MINOR';
     if (rand < 0.15) return 'MINI';
-    
+
     // Cash value
-    const multipliers = [100, 200, 500, 1000, 2000, 5000]; 
+    const multipliers = [100, 200, 500, 1000, 2000, 5000];
     const selectedMult = multipliers[Math.floor(Math.random() * multipliers.length)];
-    return selectedMult * betMultiplier; 
+    return selectedMult * betMultiplier;
   }, []);
 
   const calculateWin = (grid: SymbolType[][], lines: number, betPerLine: number, totalBet: number) => {
@@ -135,9 +200,9 @@ function App() {
     linesToCheck.forEach((linePattern, lineIndex) => {
       const firstSymbolPos = linePattern[0];
       let firstSymbol = grid[0][firstSymbolPos];
-      
+
       let matchSymbol = firstSymbol;
-      
+
       if (firstSymbol === SymbolType.WILD) {
         for (let i = 0; i < 5; i++) {
           const row = linePattern[i];
@@ -156,7 +221,7 @@ function App() {
         for (let col = 0; col < 5; col++) {
           const row = linePattern[col];
           const symbol = grid[col][row];
-          
+
           if (symbol === matchSymbol || symbol === SymbolType.WILD) {
             count++;
             currentCoords.push([col, row]);
@@ -183,7 +248,7 @@ function App() {
     // 2. Check Scatters
     let scatterCount = 0;
     const scatterCoords: number[][] = [];
-    
+
     for (let c = 0; c < 5; c++) {
         for (let r = 0; r < 3; r++) {
             if (grid[c][r] === SymbolType.SCATTER) {
@@ -195,7 +260,7 @@ function App() {
 
     if (PAYTABLE[SymbolType.SCATTER][scatterCount - 1] > 0) {
         const multiplier = PAYTABLE[SymbolType.SCATTER][scatterCount - 1];
-        const winAmount = multiplier * totalBet; 
+        const winAmount = multiplier * totalBet;
         totalWin += winAmount;
         wins.push({
             lineIndex: -1,
@@ -217,12 +282,12 @@ function App() {
         const currentMult = currentState.betMultiplier;
         const currentLines = currentState.selectedLines;
         const currentMode = currentState.mode;
-        
+
         const totalBetCents = currentDenom * currentMult * currentLines;
-        
+
         if (currentMode === GameMode.BASE && currentState.credits < totalBetCents) {
           alert("Not enough credits!");
-          return currentState; 
+          return currentState;
         }
 
         try { audio.playSpinSound(); } catch(e) {}
@@ -245,7 +310,7 @@ function App() {
     const currentDenom = denomination;
 
     if (mode === GameMode.HOLD_AND_SPIN) {
-        setReelStatus(prev => prev.map((_, i) => 'spinning')); 
+        setReelStatus(prev => prev.map((_, i) => 'spinning'));
     } else {
         setReelStatus(['spinning', 'spinning', 'spinning', 'spinning', 'spinning']);
     }
@@ -266,7 +331,7 @@ function App() {
                 colValues.push(gridValues[i][j]);
             } else if (mode === GameMode.HOLD_AND_SPIN) {
                 const rand = Math.random();
-                if (rand < 0.1) { 
+                if (rand < 0.1) {
                     col.push(SymbolType.ORB);
                     colValues.push(getRandomOrbValue(currentMult, currentDenom));
                 } else {
@@ -287,10 +352,10 @@ function App() {
         for(let j=0; j<3; j++) newValues[i][j] = colValues[j];
     }
 
-    setGameState(prev => ({ 
-        ...prev, 
+    setGameState(prev => ({
+        ...prev,
         grid: newGrid,
-        gridValues: newValues 
+        gridValues: newValues
     }));
 
     const stopDelay = mode === GameMode.HOLD_AND_SPIN ? 400 : 600;
@@ -313,7 +378,7 @@ function App() {
             if (index === 4) {
                 finishSpin(newGrid, newValues);
             }
-        }, 400); 
+        }, 400);
     };
 
     setTimeout(() => stopReel(0), stopDelay);
@@ -368,8 +433,9 @@ function App() {
                   }
                   if (isGrand) totalCash += prev.jackpots.grand * 100;
 
-                  try { audio.playWinSound(totalCash); } catch(e){}
-                  
+                  // FEATURE END
+                  audio.playFeatureEnd();
+
                   return {
                       ...prev,
                       isSpinning: false,
@@ -402,6 +468,7 @@ function App() {
           let nextFeatureModal: any = 'NONE';
           let nextFreeGames = { ...prev.freeGames };
           let nextHoldAndSpin = { ...prev.holdAndSpin };
+          let isFeatureTriggered = false;
 
           if (totalWin > 0) { try { audio.playWinSound(totalWin); } catch(e){} }
 
@@ -417,8 +484,8 @@ function App() {
           if (orbCount >= 6) {
               // Trigger Hold & Spin
               nextMode = GameMode.HOLD_AND_SPIN;
-              nextFeatureModal = 'HOLD_AND_SPIN';
-              
+              isFeatureTriggered = true;
+
               const locked = Array(5).fill(null).map(() => Array(3).fill(false));
               for(let c=0; c<5; c++){
                   for(let r=0; r<3; r++){
@@ -430,25 +497,18 @@ function App() {
                   lockedPositions: locked,
                   isGrandWon: false
               };
-              
-              try { audio.playFeatureTrigger(); } catch(e){}
-              try { audio.playFeatureBg(); } catch(e){}
 
           } else if (bonusCount >= 3) {
               // Trigger Free Games
               const isRetrigger = prev.mode === GameMode.FREE_GAMES;
               nextMode = GameMode.FREE_GAMES;
-              
+
               if (isRetrigger) {
-                  // Don't show modal, just animate counter
-                  nextFeatureModal = 'NONE'; 
+                  isFeatureTriggered = true;
                   nextFreeGames.remaining = prev.freeGames.remaining + 6;
-                  try { audio.playWinSound(1000); } catch(e){}
               } else {
-                  nextFeatureModal = 'FREE_GAMES';
+                  isFeatureTriggered = true;
                   nextFreeGames.remaining = 6;
-                  try { audio.playFeatureTrigger(); } catch(e){}
-                  try { audio.playFeatureBg(); } catch(e){}
               }
 
           } else if (prev.mode === GameMode.FREE_GAMES) {
@@ -457,10 +517,28 @@ function App() {
                   nextMode = GameMode.BASE;
                   nextFeatureModal = 'FEATURE_SUMMARY';
                   nextFreeGames.remaining = 0;
+                  // FEATURE END
+                  audio.playFeatureEnd();
               } else {
                   nextFreeGames.remaining = remaining;
                   nextFreeGames.totalPlayed = prev.freeGames.totalPlayed + 1;
               }
+          }
+
+          if (isFeatureTriggered) {
+              return {
+                  ...prev,
+                  isSpinning: true, // Keep locked
+                  isFeatureTriggering: true,
+                  credits: newCredits,
+                  lastWinAmount: totalWin,
+                  featureWinAmount: newFeatureWin,
+                  winningLines: wins,
+                  mode: nextMode,
+                  featureModalType: 'NONE',
+                  freeGames: nextFreeGames,
+                  holdAndSpin: nextHoldAndSpin
+              };
           }
 
           return {
@@ -489,25 +567,25 @@ function App() {
           <div className="fixed inset-0 z-[200] bg-white animate-pulse pointer-events-none mix-blend-overlay"></div>
       )}
 
-      {/* --- TECHNO / CLUB BACKGROUND --- */}
-      <div className="fixed inset-0 pointer-events-none z-0 bg-transparent">
+      {/* --- CUSTOM BACKGROUND IMAGE --- */}
+      <div
+        className="fixed inset-0 z-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: 'url(/assets/images/background2.jpeg)' }}
+      />
+
+      {/* --- TECHNO / CLUB EFFECTS OVERLAY --- */}
+      <div className="fixed inset-0 pointer-events-none z-[1] bg-transparent">
           {/* Strobe Overlay (Always running lightly) */}
           <div className="strobe-overlay"></div>
-          
-          {/* Laser Beams */}
-          <div className="laser-beam laser-green left-[20%]"></div>
-          <div className="laser-beam laser-pink left-[50%]"></div>
-          <div className="laser-beam laser-blue left-[80%]"></div>
-          <div className="laser-beam laser-green left-[35%] opacity-50 animation-delay-200"></div>
-          
+
           {/* Moving Floor Grid */}
           <div className="techno-grid"></div>
       </div>
 
       {/* Neon Particles (Confetti) */}
       {Array.from({ length: 40 }).map((_, i) => (
-         <div 
-             key={`neon-${i}`} 
+         <div
+             key={`neon-${i}`}
              className="neon-particle"
              style={{
                  left: `${Math.random() * 100}%`,
@@ -533,8 +611,8 @@ function App() {
         {gameState.mode === GameMode.FREE_GAMES && (
              <div className="absolute top-24 left-4 z-50 bg-black/80 border border-purple-500 p-2 rounded shadow-[0_0_15px_purple] animate-gold-pulse">
                  <div className="text-purple-400 font-bold uppercase text-xs">Free Games</div>
-                 <div 
-                    key={gameState.freeGames.remaining} 
+                 <div
+                    key={gameState.freeGames.remaining}
                     className="text-3xl font-mono text-white text-center animate-bounce"
                  >
                     {gameState.freeGames.remaining}
@@ -543,8 +621,8 @@ function App() {
         )}
 
         <div className="flex-1 flex items-center justify-center relative">
-            <SlotMachine 
-                finalGrid={gameState.grid} 
+            <SlotMachine
+                finalGrid={gameState.grid}
                 gridValues={gameState.gridValues}
                 winningLines={gameState.winningLines}
                 reelStatus={reelStatus}
@@ -555,13 +633,13 @@ function App() {
             />
         </div>
 
-        <ControlPanel 
+        <ControlPanel
             credits={gameState.credits}
             currentDenom={gameState.denomination}
             currentBetMult={gameState.betMultiplier}
             selectedLines={gameState.selectedLines}
             isSpinning={gameState.isSpinning}
-            isLocked={gameState.mode !== GameMode.BASE && gameState.mode !== GameMode.HOLD_AND_SPIN} 
+            isLocked={gameState.mode !== GameMode.BASE && gameState.mode !== GameMode.HOLD_AND_SPIN}
             onBetChange={(m) => {
                 if (gameState.isSpinning) return;
                 try { audio.playClick(); } catch(e){}
@@ -581,7 +659,7 @@ function App() {
             }}
         />
       </div>
-      
+
       <div className="absolute top-2 left-2 z-50 flex gap-2">
           <button
               onClick={() => setGameState(p => ({ ...p, isSettingsOpen: true }))}
@@ -604,7 +682,7 @@ function App() {
       </div>
 
       <div className="absolute top-2 right-2 z-50">
-          <button 
+          <button
             onClick={() => {
                 try { audio.playClick(); } catch(e){}
                 setGameState(p => ({ ...p, showPaytable: true }));
@@ -616,15 +694,15 @@ function App() {
           </button>
       </div>
 
-      <PaytableModal 
-        isOpen={gameState.showPaytable} 
+      <PaytableModal
+        isOpen={gameState.showPaytable}
         onClose={() => {
             try { audio.playClick(); } catch(e){}
             setGameState(p => ({ ...p, showPaytable: false }));
-        }} 
+        }}
       />
-      
-      <SettingsModal 
+
+      <SettingsModal
           isOpen={gameState.isSettingsOpen}
           onClose={() => setGameState(p => ({ ...p, isSettingsOpen: false }))}
           assets={gameState.customAssets}
@@ -632,13 +710,13 @@ function App() {
       />
 
       {gameState.featureModalType !== 'NONE' && (
-          <FeatureModal 
+          <FeatureModal
               type={gameState.featureModalType}
               winAmount={gameState.featureWinAmount}
               onClose={() => {
                   triggerTransition(() => {
-                    setGameState(prev => ({ 
-                        ...prev, 
+                    setGameState(prev => ({
+                        ...prev,
                         featureModalType: 'NONE',
                         featureWinAmount: prev.featureModalType === 'FEATURE_SUMMARY' ? 0 : prev.featureWinAmount
                     }));

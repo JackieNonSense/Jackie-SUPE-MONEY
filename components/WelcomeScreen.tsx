@@ -7,7 +7,7 @@ interface Props {
 }
 
 export const WelcomeScreen: React.FC<Props> = ({ onSelect }) => {
-    
+
     const handleSelect = (val: number) => {
         audio.init();
         audio.playClick();
@@ -16,13 +16,16 @@ export const WelcomeScreen: React.FC<Props> = ({ onSelect }) => {
 
     return (
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-center p-4 overflow-hidden">
-            {/* Background Image/Gradient */}
-            <div className="absolute inset-0 bg-casino z-0"></div>
-            
+            {/* Background Image */}
+            <div
+                className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: 'url(/assets/images/background1.jpeg)' }}
+            />
+
             {/* Animated Particles */}
             {Array.from({ length: 20 }).map((_, i) => (
-                <div 
-                    key={i} 
+                <div
+                    key={i}
                     className="bokeh-particle"
                     style={{
                         left: `${Math.random() * 100}%`,
@@ -35,7 +38,7 @@ export const WelcomeScreen: React.FC<Props> = ({ onSelect }) => {
             ))}
 
             <div className="relative z-20 flex flex-col items-center animate-fade-in-up w-full max-w-5xl">
-                
+
                 {/* Ornate Header */}
                 <div className="mb-12 relative">
                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-orange-500/20 blur-[50px] rounded-full"></div>
@@ -44,6 +47,10 @@ export const WelcomeScreen: React.FC<Props> = ({ onSelect }) => {
                         <br/>
                         <span className="font-serif-display text-white text-4xl md:text-6xl tracking-widest drop-shadow-[0_0_10px_rgba(255,255,255,0.8)]">
                              SUPER MONEY
+                        </span>
+                        <br/>
+                        <span className="font-serif-display text-yellow-300 text-2xl md:text-4xl tracking-widest drop-shadow-[0_0_10px_rgba(255,215,0,0.8)] mt-2">
+                             EVA EDITION
                         </span>
                      </h1>
                 </div>
